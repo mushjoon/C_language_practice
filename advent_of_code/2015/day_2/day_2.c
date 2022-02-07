@@ -28,6 +28,7 @@ int main() {
     }
     
     fclose(fp);
+    
     if (line)
     {
         free(line);
