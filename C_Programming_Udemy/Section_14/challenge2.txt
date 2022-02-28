@@ -1,0 +1,5 @@
+hello I AM JACK
+I AM TESTING lowerCASE
+GONNA convert THIS into
+UPPERcase
+i hope THIS works
