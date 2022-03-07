@@ -16,20 +16,21 @@ int main()
     char myWord[51];
     char converted[51];
     int output = 0;
+    int i, j;
     scanf("%s", myWord);
 
-    for (int i = 0; i < sizeof(myWord) / sizeof(myWord[0]); i++)
+    for (i = 0; i < sizeof(myWord) / sizeof(myWord[0]); i++)
     {
         converted[i] = tolower(myWord[i]);
     }
 
-    for (int i = 0; i < sizeof(converted) / sizeof(converted[0]); i++)
+    for (i = 0; i < sizeof(converted) / sizeof(converted[0]); i++)
     {
-        // if the length is odd
         if (strlen(converted) % 2 != 0)
         {
+            // if the length is odd
             int middle = strlen(converted) / 2;
-            int j = 0;
+            j = 0;
 
             while (converted[j] != 't')
             {
@@ -40,16 +41,20 @@ int main()
             {
                 output = 1;
             }
-            else if (j > middle)
+            else if (j > middle && j < strlen(converted))
             {
                 output = 2;
+            }
+            else
+            {
+                output = -1;
             }
         }
         // if the length is even
         else
         {
             int middle = strlen(converted) / 2;
-            int j = 0;
+            j = 0;
 
             while (converted[j] != 't')
             {
@@ -60,13 +65,16 @@ int main()
             {
                 output = 1;
             }
-            else
+            else if (j >= middle && j < strlen(converted))
             {
                 output = 2;
             }
+            else
+            {
+                output = -1;
+            }
         }
     }
-
     printf("%d", output);
     // printf("%s", converted);
 
