@@ -8,8 +8,8 @@ int main(void)
     printf("Please enter two numbers:\n");
     scanf("%d%d", &a, &b);
     printf("You entered %d and %d\n", a, b);
-
-    printf("Sum: %d", sum(a, b));
+    
+    printf("Sum: %d\n", sum(a,b));
 
     return 0;
 }
@@ -18,3 +18,4 @@ int sum(int num1, int num2)
 {
     return num1 + num2;
 }
+
