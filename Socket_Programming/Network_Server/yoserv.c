@@ -4,6 +4,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <unistd.h>
 
 const int PORTNUM = 1234;
 
@@ -19,20 +20,20 @@ int main(int argc, char const *argv[])
 
     if (sockfd < 0)
     {
-        printf("Can't open socket\n");
-        EXIT_FAILURE;
+        perror("Can't open socket\n");
+        exit(1);
     }
-    
+
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(PORTNUM);
     serv_addr.sin_addr.s_addr = INADDR_ANY;
 
     // bind to socket ===========================================
-    int res = bind(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
+    int res = bind(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
     if (res < 0)
     {
-        printf("Can't bind to socket!!!\n");
-        EXIT_FAILURE;
+        perror("Can't bind to socket.\n");
+        exit(1);
     }
 
     // listen for connection ====================================
@@ -40,18 +41,40 @@ int main(int argc, char const *argv[])
 
     // accept connection ========================================
     int client_len = sizeof(client_addr);
-    newSockfd = accept(sockfd, (struct sockaddr*)&client_addr, (socklen_t*)&client_len);
+    newSockfd = accept(sockfd, (struct sockaddr *)&client_addr, (socklen_t *)&client_len);
 
     // hand off to function =====================================
     do_yo(newSockfd);
+    close(newSockfd);
+    close(sockfd);
 
     return 0;
 }
 
 void do_yo(int sock)
 {
-    char buf[1000];
-    strcpy(buf, "Got it!\n");
+    const int NOT_AUTH = 0;
 
+    char buf[1000];
+    // strcpy(buf, "Got it!\n");
+
+    // send(sock, buf, strlen(buf), 0);
+
+    // send greeting ============================================
+    strcpy(buf, "250 yo, hello\n");
     send(sock, buf, strlen(buf), 0);
+
+    int state = NOT_AUTH;
+
+    while (1)
+    {
+        // wait for input from user =================================
+        recv(sock, buf, 1000, 0);
+
+        if (!strncmp("NOYO", buf, 4))
+        {
+            close(sock);
+            return;
+        }
+    }
 }
