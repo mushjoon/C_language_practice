@@ -43,10 +43,32 @@ int main(int argc, char const *argv[])
 
     // accept connection ========================================
     int client_len = sizeof(client_addr);
-    newSockfd = accept(sockfd, (struct sockaddr *)&client_addr, (socklen_t *)&client_len);
 
-    // hand off to function =====================================
-    do_yo(newSockfd);
+    while (1)
+    {
+        newSockfd = accept(sockfd, (struct sockaddr *)&client_addr, (socklen_t *)&client_len);
+
+        int pid = fork();
+
+        if (pid < 0)
+        {
+            perror("Could not fork!!! :(");
+            exit(1);
+        }
+        if (pid == 0)
+        {
+            // This is the child process
+            // hand off to function =====================================
+            close(sockfd);
+            do_yo(newSockfd);
+        }
+        else
+        {
+            // This is the parent
+            close(newSockfd);
+        }
+    }
+
     close(newSockfd);
     close(sockfd);
 
@@ -82,7 +104,9 @@ void do_yo(int sock)
     while (1)
     {
         // wait for input from user =================================
-        recv(sock, buf, 1000, 0);
+        int recvd = recv(sock, buf, 999, 0);
+
+        buf[recvd] = '\0';
 
         if (!strncmp("NOYO", buf, 4))
         {
@@ -91,8 +115,15 @@ void do_yo(int sock)
         }
         else if (!strncmp("MEIS", buf, 4))
         {
-            
-            sscanf(buf + 5, "%s", username);
+
+            int count = sscanf(buf, "MEIS %s", username);
+            if (count != 1)
+            {
+                strcpy(buf, "SERVER>>> 500 NO USER SPECIFIED\n");
+                send(sock, buf, strlen(buf), 0);
+                continue;
+            }
+
             printf("User is %s\n", username);
 
             // ENTER USERNAME INTO DB
@@ -121,24 +152,24 @@ void do_yo(int sock)
             strcpy(buf, "SERVER>>> 300 All users\n");
             send(sock, buf, strlen(buf), 0);
 
+            printf("%s listing users\n", username);
+
             // QUERY DATABASE FOR ALL USERS
             sqlite3_stmt *stmt;
             char *query = "select uname from users order by uname";
             sqlite3_prepare_v2(db, query, strlen(query), &stmt, NULL);
 
-
             // DISPLAY LIST TO CLIENT
-            //char *uname;
+            // char *uname;
             while (sqlite3_step(stmt) != SQLITE_DONE)
             {
                 sprintf(buf, "%s\n", (char *)sqlite3_column_text(stmt, 0));
                 send(sock, buf, strlen(buf), 0);
             }
-            
+
             // SEND "."
             strcpy(buf, ".\n");
             send(sock, buf, strlen(buf), 0);
-
         }
         else if (!strncmp("YOYO", buf, 4))
         {
@@ -147,12 +178,35 @@ void do_yo(int sock)
                 complain(sock);
                 continue;
             }
+
             // QUEUE YO FOR SOMEONE
             char query[1000];
             char to[995];
             sqlite3_stmt *stmt;
 
-            sscanf(buf + 5, "%s ", to);
+            int count = sscanf(buf, "YOYO %s ", to);
+
+            if (count != 1)
+            {
+                strcpy(buf, "SERVER>>> 500 NO USER SPECIFIED\n");
+                send(sock, buf, strlen(buf), 0);
+                continue;
+            }
+
+            printf("%s sending yo to %s\n", username, to);
+
+            // CHECK IF USER EXISTS
+            sprintf(query, "select count(*) from users where uname='%s'", to);
+            sqlite3_prepare_v2(db, query, strlen(query), &stmt, NULL);
+            sqlite3_step(stmt);
+            int usercount = sqlite3_column_int(stmt, 0);
+            if (usercount == 0)
+            {
+                strcpy(buf, "SERVER>>> 404 USER NOT FOUND\n");
+                send(sock, buf, strlen(buf), 0);
+                continue;
+            }
+
             sprintf(query, "insert into yos(yofrom, yoto) values ('%s', '%s')", username, to);
             sqlite3_prepare_v2(db, query, strlen(query), &stmt, NULL);
             sqlite3_step(stmt);
@@ -171,24 +225,29 @@ void do_yo(int sock)
             strcpy(buf, "SERVER>>> 300 Here are all your yos\n");
             send(sock, buf, strlen(buf), 0);
 
+            printf("%s getting yos\n", username);
+
             // QUERY DATABASE FOR ALL USERS
             sqlite3_stmt *stmt;
             char query[1000];
             sprintf(query, "select yofrom from yos where yoto='%s' order by id", username);
             sqlite3_prepare_v2(db, query, strlen(query), &stmt, NULL);
 
-
             // DISPLAY LIST TO CLIENT
-            //char *uname;
+            // char *uname;
             while (sqlite3_step(stmt) != SQLITE_DONE)
             {
                 sprintf(buf, "%s\n", (char *)sqlite3_column_text(stmt, 0));
                 send(sock, buf, strlen(buf), 0);
             }
-            
+
             // SEND "."
             strcpy(buf, ".\n");
             send(sock, buf, strlen(buf), 0);
+
+            sprintf(query, "delete from yos where yoto='%s'", username);
+            sqlite3_prepare_v2(db, query, strlen(query), &stmt, NULL);
+            sqlite3_step(stmt);
         }
         else
         {
@@ -204,3 +263,31 @@ void complain(int sock)
     strcpy(buf, "500 NOT LOGGED IN\n");
     send(sock, buf, strlen(buf), 0);
 }
+
+// void login(int sock, char *buf)
+// {
+
+//     int count = sscanf(buf, "MEIS %s", username);
+//     if (count != 1)
+//     {
+//         strcpy(buf, "SERVER>>> 500 NO USER SPECIFIED\n");
+//         send(sock, buf, strlen(buf), 0);
+//         continue;
+//     }
+
+//     printf("User is %s\n", username);
+
+//     // ENTER USERNAME INTO DB
+//     char query[1000];
+//     sqlite3_stmt *stmt;
+
+//     // FYI THIS IS NOT A GOOD WAY OF DOING IT
+//     sprintf(query, "insert or replace into users (uname) values ('%s')", username);
+//     sqlite3_prepare_v2(db, query, strlen(query), &stmt, NULL);
+//     sqlite3_step(stmt);
+
+//     // SEND BACK CONFIRMATION
+//     strcpy(buf, "SERVER>>> 200 LOGIN OK\n");
+//     send(sock, buf, strlen(buf), 0);
+//     state = LOGGED_IN;
+// }
